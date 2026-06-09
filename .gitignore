@@ -1,3 +1,4 @@
 .wrangler/
 workers/**/.wrangler/
 node_modules/
+data_exports/
