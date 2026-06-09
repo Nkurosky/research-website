@@ -320,7 +320,9 @@ const REMOTE_AUTOSAVE_MODE = STUDY_CONFIG.remoteAutosaveMode === 'no-cors' ? 'no
 const REMOTE_AUTOSAVE_TOKEN = typeof STUDY_CONFIG.remoteAutosaveToken === 'string'
   ? STUDY_CONFIG.remoteAutosaveToken.trim()
   : '';
+const LOCAL_AUTOSAVE_ENABLED = STUDY_CONFIG.localAutosaveEnabled === true || !REMOTE_AUTOSAVE_URL;
 const DOWNLOAD_RESULTS_WHEN_REMOTE_SAVE_WORKS = Boolean(STUDY_CONFIG.downloadResultsWhenRemoteSaveWorks);
+const DOWNLOAD_RESULTS_ON_REMOTE_SAVE_FAILURE = Boolean(STUDY_CONFIG.downloadResultsOnRemoteSaveFailure);
 
 const tutorialStimulusSeed = {
   id: 'tutorial_practice',
@@ -899,6 +901,8 @@ function parseAutosaveSnapshot(value) {
 }
 
 function readStoredAutosaveSnapshot() {
+  if (!LOCAL_AUTOSAVE_ENABLED) return null;
+
   try {
     return parseAutosaveSnapshot(window.localStorage.getItem(getAutosaveStorageKey()));
   } catch (err) {
@@ -1100,10 +1104,12 @@ function persistAutosave(reason = 'autosave', latestRow = null) {
   const localPayload = JSON.stringify(snapshot);
   const jatosPayload = snapshot.decision_tsv;
 
-  try {
-    window.localStorage.setItem(getAutosaveStorageKey(), localPayload);
-  } catch (err) {
-    // Browser storage can fail in private mode or if quota is exceeded; JATOS still receives updates.
+  if (LOCAL_AUTOSAVE_ENABLED) {
+    try {
+      window.localStorage.setItem(getAutosaveStorageKey(), localPayload);
+    } catch (err) {
+      // Browser storage can fail in private mode or if quota is exceeded; remote/JATOS saves still receive updates.
+    }
   }
 
   submitJatosAutosave(jatosPayload);
@@ -1132,7 +1138,7 @@ function finishStudyWithResults() {
     const finishLocalOrRemote = () => {
       const shouldDownloadResults = !hasRemoteAutosaveEndpoint() ||
         DOWNLOAD_RESULTS_WHEN_REMOTE_SAVE_WORKS ||
-        !lastRemoteAutosaveSucceeded;
+        (DOWNLOAD_RESULTS_ON_REMOTE_SAVE_FAILURE && !lastRemoteAutosaveSucceeded);
 
       if (shouldDownloadResults) {
         downloadTextFile('league-study-results.tsv', resultTable);
