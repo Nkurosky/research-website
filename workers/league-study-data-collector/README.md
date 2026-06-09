@@ -46,3 +46,22 @@ Use the Cloudflare dashboard:
 4. Open or download the latest JSON value or final submission.
 
 Each object contains the full `decision_tsv` plus the structured rows.
+
+## Exporting CSVs
+
+After downloading one or more final submission JSON files into `data_exports/league-decision-task/`, run this from the website repo root:
+
+```powershell
+node scripts\export-league-study-csv.js
+```
+
+The script writes:
+
+- `data_exports/league-decision-task/csv_exports/decision_trials.csv`
+- `data_exports/league-decision-task/csv_exports/raw_events.csv`
+
+By default it exports only filenames containing `final_submit`, which avoids duplicate rows from autosave snapshots. To intentionally include autosaves, run:
+
+```powershell
+node scripts\export-league-study-csv.js data_exports\league-decision-task data_exports\league-decision-task\csv_exports --all-saves
+```
