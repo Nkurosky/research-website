@@ -1008,7 +1008,6 @@ function buildRemoteAutosavePayload(snapshot) {
   return {
     study_slug: snapshot.study_slug,
     participant_id: snapshot.participant_id,
-    access_token: REMOTE_AUTOSAVE_TOKEN,
     reason: snapshot.reason,
     sequence: snapshot.sequence,
     saved_at: snapshot.saved_at,
@@ -1028,15 +1027,20 @@ function submitRemoteAutosave(snapshot) {
   if (!hasRemoteAutosaveEndpoint()) return;
 
   const payload = JSON.stringify(buildRemoteAutosavePayload(snapshot));
+  const headers = {
+    'Content-Type': 'application/json;charset=utf-8'
+  };
+
+  if (REMOTE_AUTOSAVE_TOKEN) {
+    headers.Authorization = `Bearer ${REMOTE_AUTOSAVE_TOKEN}`;
+  }
 
   remoteAutosaveQueue = remoteAutosaveQueue
     .catch(() => {})
     .then(() => fetch(REMOTE_AUTOSAVE_URL, {
       method: 'POST',
       mode: REMOTE_AUTOSAVE_MODE,
-      headers: {
-        'Content-Type': 'text/plain;charset=utf-8'
-      },
+      headers,
       body: payload,
       keepalive: payload.length < 60000
     }))

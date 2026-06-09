@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "league-study-data-collector",
+  "main": "src/index.js",
+  "compatibility_date": "2026-06-09",
+  "workers_dev": true,
+  "kv_namespaces": [
+    {
+      "binding": "STUDY_DATA",
+      "id": "646fb74ed6ab4465acbac8bf512dca93"
+    }
+  ],
+  "vars": {
+    "ALLOWED_ORIGIN": "https://nathankurosky.com",
+    "STUDY_SLUG": "league-decision-task",
+    "MAX_BODY_BYTES": "1048576"
+  }
+}
