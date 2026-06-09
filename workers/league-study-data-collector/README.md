@@ -49,7 +49,15 @@ Each object contains the full `decision_tsv` plus the structured rows.
 
 ## Exporting CSVs
 
-After downloading one or more final submission JSON files into `data_exports/league-decision-task/`, run this from the website repo root:
+For the normal workflow, run this from the website repo root:
+
+```powershell
+node scripts\pull-league-study-data.js
+```
+
+That command uses your local Cloudflare/Wrangler login to privately download final submissions from KV into `data_exports/league-decision-task/`, then writes CSVs. No public read endpoint is exposed.
+
+If you have already downloaded one or more final submission JSON files into `data_exports/league-decision-task/`, you can rebuild just the CSVs with:
 
 ```powershell
 node scripts\export-league-study-csv.js
@@ -63,5 +71,5 @@ The script writes:
 By default it exports only filenames containing `final_submit`, which avoids duplicate rows from autosave snapshots. To intentionally include autosaves, run:
 
 ```powershell
-node scripts\export-league-study-csv.js data_exports\league-decision-task data_exports\league-decision-task\csv_exports --all-saves
+node scripts\pull-league-study-data.js --all-saves
 ```
