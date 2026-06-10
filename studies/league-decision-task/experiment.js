@@ -1028,7 +1028,7 @@ function buildRemoteAutosavePayload(snapshot) {
 }
 
 function submitRemoteAutosave(snapshot) {
-  if (!hasRemoteAutosaveEndpoint()) return Promise.resolve();
+  if (!hasRemoteAutosaveEndpoint()) return Promise.resolve({ ok: true, skipped: true });
 
   const payload = JSON.stringify(buildRemoteAutosavePayload(snapshot));
   const headers = {
@@ -1052,7 +1052,7 @@ function submitRemoteAutosave(snapshot) {
       if (response.type === 'opaque') {
         lastRemoteAutosaveSucceeded = true;
         lastRemoteAutosaveError = '';
-        return;
+        return { ok: true };
       }
 
       if (!response.ok) {
@@ -1061,11 +1061,13 @@ function submitRemoteAutosave(snapshot) {
 
       lastRemoteAutosaveSucceeded = true;
       lastRemoteAutosaveError = '';
+      return { ok: true };
     })
     .catch((err) => {
       lastRemoteAutosaveSucceeded = false;
       lastRemoteAutosaveError = err?.message || 'Remote autosave failed';
       console.warn(lastRemoteAutosaveError);
+      return { ok: false, error: lastRemoteAutosaveError };
     });
 
   return remoteAutosaveQueue;
@@ -1115,12 +1117,13 @@ function persistAutosave(reason = 'autosave', latestRow = null) {
   }
 
   submitJatosAutosave(jatosPayload);
-  submitRemoteAutosave(snapshot);
+  const remoteSave = submitRemoteAutosave(snapshot);
+  return { snapshot, remoteSave };
 }
 
 function finishStudyWithResults() {
   const resultTable = buildSpreadsheetResult(rowsWithLatestPartialTrial(getBestAvailableRows()));
-  persistAutosave('final_submit');
+  const finalSave = persistAutosave('final_submit');
 
   const target = document.getElementById('jspsych-target') || document.body;
   target.innerHTML = '<div class="screen-wrap"><h2>Saving responses...</h2><p>Please keep this page open for a moment.</p></div>';
@@ -1140,7 +1143,7 @@ function finishStudyWithResults() {
       autosaveQueue.then(finish, finish);
     }
   } else {
-    const finishLocalOrRemote = () => {
+    const finishLocalOrRemote = (remoteResult) => {
       const shouldDownloadResults = !hasRemoteAutosaveEndpoint() ||
         DOWNLOAD_RESULTS_WHEN_REMOTE_SAVE_WORKS ||
         (DOWNLOAD_RESULTS_ON_REMOTE_SAVE_FAILURE && !lastRemoteAutosaveSucceeded);
@@ -1149,13 +1152,21 @@ function finishStudyWithResults() {
         downloadTextFile('league-study-results.tsv', resultTable);
       }
 
+      if (hasRemoteAutosaveEndpoint() && (!remoteResult || remoteResult.ok !== true)) {
+        target.innerHTML =
+          '<div class="screen-wrap"><h2>Save not confirmed</h2>' +
+          '<p>Please keep this page open and contact the study team.</p>' +
+          `<p class="warning-text">${lastRemoteAutosaveError || 'Remote save did not complete.'}</p></div>`;
+        return;
+      }
+
       target.innerHTML = '<div class="screen-wrap"><h2>Responses saved</h2><p>You may now close this page.</p></div>';
     };
 
-    if (typeof remoteAutosaveQueue.finally === 'function') {
-      remoteAutosaveQueue.finally(finishLocalOrRemote);
+    if (finalSave.remoteSave && typeof finalSave.remoteSave.then === 'function') {
+      finalSave.remoteSave.then(finishLocalOrRemote, () => finishLocalOrRemote({ ok: false }));
     } else {
-      remoteAutosaveQueue.then(finishLocalOrRemote, finishLocalOrRemote);
+      finishLocalOrRemote({ ok: true, skipped: true });
     }
   }
 }
