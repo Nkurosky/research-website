@@ -1028,7 +1028,7 @@ function buildRemoteAutosavePayload(snapshot) {
 }
 
 function submitRemoteAutosave(snapshot) {
-  if (!hasRemoteAutosaveEndpoint()) return;
+  if (!hasRemoteAutosaveEndpoint()) return Promise.resolve();
 
   const payload = JSON.stringify(buildRemoteAutosavePayload(snapshot));
   const headers = {
@@ -1067,6 +1067,8 @@ function submitRemoteAutosave(snapshot) {
       lastRemoteAutosaveError = err?.message || 'Remote autosave failed';
       console.warn(lastRemoteAutosaveError);
     });
+
+  return remoteAutosaveQueue;
 }
 
 function submitJatosAutosave(payload) {
@@ -1120,6 +1122,9 @@ function finishStudyWithResults() {
   const resultTable = buildSpreadsheetResult(rowsWithLatestPartialTrial(getBestAvailableRows()));
   persistAutosave('final_submit');
 
+  const target = document.getElementById('jspsych-target') || document.body;
+  target.innerHTML = '<div class="screen-wrap"><h2>Saving responses...</h2><p>Please keep this page open for a moment.</p></div>';
+
   if (typeof jatos !== 'undefined') {
     const finish = () => {
       try {
@@ -1143,6 +1148,8 @@ function finishStudyWithResults() {
       if (shouldDownloadResults) {
         downloadTextFile('league-study-results.tsv', resultTable);
       }
+
+      target.innerHTML = '<div class="screen-wrap"><h2>Responses saved</h2><p>You may now close this page.</p></div>';
     };
 
     if (typeof remoteAutosaveQueue.finally === 'function') {
