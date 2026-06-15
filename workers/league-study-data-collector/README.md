@@ -6,6 +6,7 @@ Private Cloudflare Worker endpoint for the League Decision Study.
 
 - Accepts `POST` requests only from `https://nathankurosky.com`.
 - Stores each autosave/final submission as a private JSON value in Cloudflare KV.
+- Maintains one private participant CSV at `league-decision-task/single-files/<participant_id>.csv`.
 - Exposes no read/list endpoint, so participants and website visitors cannot retrieve submitted data.
 - Keeps Cloudflare credentials and storage access entirely server-side.
 
@@ -45,7 +46,19 @@ Use the Cloudflare dashboard:
 3. Search keys by `league-decision-task/<participant_id>/`.
 4. Open or download the latest JSON value or final submission.
 
-Each object contains the full `decision_tsv` plus the structured rows.
+Each JSON object contains the full `decision_tsv` plus the structured rows. The `single-files/` CSV is overwritten as the participant progresses, so the latest key is the canonical single file for that participant.
+
+To download the single participant CSV files, run this from the website repo root:
+
+```powershell
+node scripts\pull-league-study-single-csvs.js
+```
+
+The script writes private local files into:
+
+```text
+data_exports/league-decision-task/participant_csvs/
+```
 
 ## Exporting CSVs
 

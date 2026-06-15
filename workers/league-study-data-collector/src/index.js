@@ -83,6 +83,62 @@ function objectKey(payload) {
   return `${study}/${participant}/${sequence}-${reason}-${savedAt}.json`;
 }
 
+function participantCsvKey(payload) {
+  const study = safePathSegment(payload.study_slug, 'study');
+  const participant = safePathSegment(payload.participant_id, 'participant');
+
+  return `${study}/single-files/${participant}.csv`;
+}
+
+function parseDelimitedLine(line, delimiter) {
+  const values = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i += 1;
+      } else {
+        inQuotes = !inQuotes;
+      }
+      continue;
+    }
+
+    if (char === delimiter && !inQuotes) {
+      values.push(current);
+      current = '';
+      continue;
+    }
+
+    current += char;
+  }
+
+  values.push(current);
+  return values;
+}
+
+function csvEscape(value) {
+  const text = String(value ?? '').replace(/\r?\n/g, '\\n');
+  if (/[",\r\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`;
+  }
+  return text;
+}
+
+function tsvToCsv(tsv) {
+  return String(tsv || '')
+    .replace(/^\uFEFF/, '')
+    .split(/\r?\n/)
+    .filter((line) => line.trim() !== '')
+    .map((line) => parseDelimitedLine(line, '\t').map(csvEscape).join(','))
+    .join('\n') + '\n';
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === 'OPTIONS') {
@@ -105,21 +161,33 @@ export default {
       validatePayload(payload, env);
 
       const key = objectKey(payload);
+      const participantCsv = tsvToCsv(payload.decision_tsv);
+      const csvKey = participantCsvKey(payload);
+      const metadata = {
+        study_slug: payload.study_slug,
+        participant_id: safePathSegment(payload.participant_id, 'participant'),
+        reason: safePathSegment(payload.reason, 'autosave'),
+        sequence: String(payload.sequence)
+      };
+
       await env.STUDY_DATA.put(key, JSON.stringify({
         received_at: new Date().toISOString(),
         cf_ray: request.headers.get('CF-Ray') || '',
         country: request.cf?.country || '',
         payload
       }, null, 2), {
+        metadata
+      });
+
+      await env.STUDY_DATA.put(csvKey, participantCsv, {
         metadata: {
-          study_slug: payload.study_slug,
-          participant_id: safePathSegment(payload.participant_id, 'participant'),
-          reason: safePathSegment(payload.reason, 'autosave'),
-          sequence: String(payload.sequence)
+          ...metadata,
+          content_type: 'text/csv',
+          updated_at: new Date().toISOString()
         }
       });
 
-      return jsonResponse({ ok: true }, 201, env);
+      return jsonResponse({ ok: true, csv_key: csvKey }, 201, env);
     } catch (err) {
       const message = err?.message || 'save_failed';
       const status = message === 'payload_too_large' ? 413 : 400;
