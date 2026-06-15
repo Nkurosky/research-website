@@ -323,6 +323,7 @@ const REMOTE_AUTOSAVE_TOKEN = typeof STUDY_CONFIG.remoteAutosaveToken === 'strin
 const LOCAL_AUTOSAVE_ENABLED = STUDY_CONFIG.localAutosaveEnabled === true || !REMOTE_AUTOSAVE_URL;
 const DOWNLOAD_RESULTS_WHEN_REMOTE_SAVE_WORKS = Boolean(STUDY_CONFIG.downloadResultsWhenRemoteSaveWorks);
 const DOWNLOAD_RESULTS_ON_REMOTE_SAVE_FAILURE = Boolean(STUDY_CONFIG.downloadResultsOnRemoteSaveFailure);
+const REMOTE_AUTOSAVE_INCLUDE_RAW_ROWS = STUDY_CONFIG.remoteAutosaveIncludeRawRows === true;
 
 const tutorialStimulusSeed = {
   id: 'tutorial_practice',
@@ -1009,7 +1010,7 @@ function hasRemoteAutosaveEndpoint() {
 }
 
 function buildRemoteAutosavePayload(snapshot) {
-  return {
+  const payload = {
     study_slug: snapshot.study_slug,
     participant_id: snapshot.participant_id,
     reason: snapshot.reason,
@@ -1020,11 +1021,16 @@ function buildRemoteAutosavePayload(snapshot) {
     completed_rows: snapshot.completed_rows,
     current_session_rows: snapshot.current_session_rows,
     recovered_previous_rows: snapshot.recovered_previous_rows,
-    latest_row: snapshot.latest_row,
-    latest_partial_trial_row: snapshot.latest_partial_trial_row,
-    rows: snapshot.rows,
     decision_tsv: snapshot.decision_tsv
   };
+
+  if (REMOTE_AUTOSAVE_INCLUDE_RAW_ROWS) {
+    payload.latest_row = snapshot.latest_row;
+    payload.latest_partial_trial_row = snapshot.latest_partial_trial_row;
+    payload.rows = snapshot.rows;
+  }
+
+  return payload;
 }
 
 function submitRemoteAutosave(snapshot) {
