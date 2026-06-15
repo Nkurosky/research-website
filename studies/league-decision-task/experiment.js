@@ -1045,15 +1045,22 @@ function submitRemoteAutosave(snapshot) {
     headers.Authorization = `Bearer ${REMOTE_AUTOSAVE_TOKEN}`;
   }
 
+  const useKeepalive = snapshot.reason !== 'final_submit' && payload.length < 60000;
+  const fetchOptions = {
+    method: 'POST',
+    mode: REMOTE_AUTOSAVE_MODE,
+    headers,
+    body: payload,
+    keepalive: useKeepalive
+  };
+
   remoteAutosaveQueue = remoteAutosaveQueue
     .catch(() => {})
-    .then(() => fetch(REMOTE_AUTOSAVE_URL, {
-      method: 'POST',
-      mode: REMOTE_AUTOSAVE_MODE,
-      headers,
-      body: payload,
-      keepalive: payload.length < 60000
-    }))
+    .then(() => fetch(REMOTE_AUTOSAVE_URL, fetchOptions)
+      .catch((err) => {
+        if (!fetchOptions.keepalive) throw err;
+        return fetch(REMOTE_AUTOSAVE_URL, { ...fetchOptions, keepalive: false });
+      }))
     .then((response) => {
       if (response.type === 'opaque') {
         lastRemoteAutosaveSucceeded = true;
