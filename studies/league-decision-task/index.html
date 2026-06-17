@@ -80,9 +80,10 @@
 
       .trial-screen-wrap {
         --trial-header-height: 52px;
-        --trial-panel-height: 168px;
+        --trial-panel-height: 148px;
         --trial-gap: 8px;
-        --trial-image-width: min(960px, 100%);
+        --trial-image-width: min(1180px, 100%);
+        --trial-workspace-width: min(1390px, 100%);
         max-width: min(1400px, 100%);
         display: flex;
         flex-direction: column;
@@ -97,8 +98,8 @@
         aspect-ratio: 16 / 9;
         margin: 0 auto;
         overflow: hidden;
-        border-radius: 12px;
-        box-shadow: 0 6px 24px rgba(0, 0, 0, 0.44);
+        border-radius: 0;
+        box-shadow: none;
       }
 
       .screenshot-container img {
@@ -106,7 +107,7 @@
         width: 100%;
         height: 100%;
         object-fit: cover;
-        border-radius: 12px;
+        border-radius: 0;
       }
 
       .cue-overlay {
@@ -209,6 +210,32 @@
         border-radius: 10px;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
         transition: all 0.2s ease;
+      }
+
+      .trial-workspace {
+        width: var(--trial-workspace-width);
+        min-height: calc(100vh - 116px);
+        margin: 0 auto;
+        border: 2px solid rgba(200, 155, 60, 0.46);
+        border-radius: 0;
+        background: #0f1923;
+        overflow: hidden;
+      }
+
+      .trial-workspace .stimulus-stage {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0;
+        padding: 8px 0 6px;
+      }
+
+      .trial-workspace .decision-panel {
+        width: 100%;
+        border-right: 0;
+        border-left: 0;
+        border-radius: 0;
+        box-shadow: none;
       }
 
       .baseline-panel:hover,
@@ -959,6 +986,10 @@
         .screen-wrap {
           max-width: 100%;
         }
+
+        .trial-workspace {
+          min-height: 0;
+        }
       }
 
       @media (max-height: 900px) {
@@ -968,7 +999,7 @@
 
         .trial-screen-wrap {
           --trial-gap: 6px;
-          --trial-image-width: min(900px, 100%);
+          --trial-image-width: min(980px, 100%);
         }
 
         .decision-panel {
@@ -983,7 +1014,7 @@
 
       @media (max-height: 800px) {
         .trial-screen-wrap {
-          --trial-image-width: min(820px, 100%);
+          --trial-image-width: min(900px, 100%);
         }
 
         .decision-scale-caption {
@@ -1042,6 +1073,6 @@
         downloadResultsOnRemoteSaveFailure: false
       };
     </script>
-    <script src="experiment.js?v=20260615-final-fetch-retry"></script>
+    <script src="experiment.js?v=20260616-framed-trial-workspace"></script>
   </body>
 </html>

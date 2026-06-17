@@ -1733,9 +1733,10 @@ function buildCueSearchTimeline(stimulus, options = {}) {
               </div>
             </div>
 
-            <div class="stimulus-stage">
-              <div class="screenshot-container ${stimulusLocked ? 'stimulus-locked' : ''}" id="participant-screenshot-container">
-                <img src="${stimulus.screenshot}" alt="League screenshot" />
+            <div class="trial-workspace">
+              <div class="stimulus-stage">
+                <div class="screenshot-container ${stimulusLocked ? 'stimulus-locked' : ''}" id="participant-screenshot-container">
+                  <img src="${stimulus.screenshot}" alt="League screenshot" />
         `;
 
         remainingCues.forEach((cue) => {
@@ -1757,75 +1758,76 @@ function buildCueSearchTimeline(stimulus, options = {}) {
         });
 
         html += `
-                <div id="stimulus-lock-cover" class="stimulus-lock-cover" ${stimulusLocked ? '' : 'hidden'}>
-                  <div class="stimulus-lock-copy" id="stimulus-lock-copy">
-                    ${timedOut
-                      ? 'Time is up. Make your choice, then explain your answer.'
-                      : ''}
+                  <div id="stimulus-lock-cover" class="stimulus-lock-cover" ${stimulusLocked ? '' : 'hidden'}>
+                    <div class="stimulus-lock-copy" id="stimulus-lock-copy">
+                      ${timedOut
+                        ? 'Time is up. Make your choice, then explain your answer.'
+                        : ''}
+                    </div>
                   </div>
                 </div>
-              </div>
-              ${buildPriorContextMarkup(stimulus, `${stimulus.id}-overlay`, {
-                buttonLabel: 'Prior context'
-              })}
-            </div>
-
-            <div class="decision-panel">
-              <div class="decision-panel-header">
-                <label for="confidence-slider" class="decision-panel-title">Confidence</label>
+                ${buildPriorContextMarkup(stimulus, `${stimulus.id}-overlay`, {
+                  buttonLabel: 'Prior context'
+                })}
               </div>
 
-              <div class="slider-row decision-slider-row">
-                <button
-                  type="button"
-                  id="decision-dont-fight"
-                  class="decision-choice decision-choice-left"
-                  data-decision="${escapeHtml(decisionOptions.left.value)}"
-                >
-                  <span class="decision-label">${escapeHtml(decisionOptions.left.label)}</span>
-                </button>
-
-                <input
-                  id="confidence-slider"
-                  type="range"
-                  min="-100"
-                  max="100"
-                  value="${currentConfidence}"
-                  style="flex:1; height:32px;"
-                />
-
-                <button
-                  type="button"
-                  id="decision-fight"
-                  class="decision-choice decision-choice-right"
-                  data-decision="${escapeHtml(decisionOptions.right.value)}"
-                >
-                  <span class="decision-label">${escapeHtml(decisionOptions.right.label)}</span>
-                </button>
-              </div>
-
-              <div class="decision-scale-caption">
-                Center = 0 (uncertain)
-              </div>
-
-              <p id="adjust-note" class="${revealedCueIds.length > 0 || timedOut ? 'warning-text' : 'hint'} status-banner">
-                ${escapeHtml(statusMessage)}
-              </p>
-
-              <div id="rationale-section" class="rationale-section" hidden>
-                <div class="rationale-heading">
-                  Selected call: <strong id="selected-decision-label"></strong>
+              <div class="decision-panel">
+                <div class="decision-panel-header">
+                  <label for="confidence-slider" class="decision-panel-title">Confidence</label>
                 </div>
-                <label for="rationale">Rationale</label>
-                <textarea
-                  id="rationale"
-                  rows="4"
-                  cols="70"
-                  placeholder="Briefly explain what led you to this call."
-                ></textarea>
-                <div class="rationale-actions">
-                  <div id="rationale-word-count" class="text-muted">0 words</div>
-                  <button id="submit-decision-btn" class="jspsych-btn">Continue to next stimulus</button>
+
+                <div class="slider-row decision-slider-row">
+                  <button
+                    type="button"
+                    id="decision-dont-fight"
+                    class="decision-choice decision-choice-left"
+                    data-decision="${escapeHtml(decisionOptions.left.value)}"
+                  >
+                    <span class="decision-label">${escapeHtml(decisionOptions.left.label)}</span>
+                  </button>
+
+                  <input
+                    id="confidence-slider"
+                    type="range"
+                    min="-100"
+                    max="100"
+                    value="${currentConfidence}"
+                    style="flex:1; height:32px;"
+                  />
+
+                  <button
+                    type="button"
+                    id="decision-fight"
+                    class="decision-choice decision-choice-right"
+                    data-decision="${escapeHtml(decisionOptions.right.value)}"
+                  >
+                    <span class="decision-label">${escapeHtml(decisionOptions.right.label)}</span>
+                  </button>
+                </div>
+
+                <div class="decision-scale-caption">
+                  Center = 0 (uncertain)
+                </div>
+
+                <p id="adjust-note" class="${revealedCueIds.length > 0 || timedOut ? 'warning-text' : 'hint'} status-banner">
+                  ${escapeHtml(statusMessage)}
+                </p>
+
+                <div id="rationale-section" class="rationale-section" hidden>
+                  <div class="rationale-heading">
+                    Selected call: <strong id="selected-decision-label"></strong>
+                  </div>
+                  <label for="rationale">Rationale</label>
+                  <textarea
+                    id="rationale"
+                    rows="4"
+                    cols="70"
+                    placeholder="Briefly explain what led you to this call."
+                  ></textarea>
+                  <div class="rationale-actions">
+                    <div id="rationale-word-count" class="text-muted">0 words</div>
+                    <button id="submit-decision-btn" class="jspsych-btn">Continue to next stimulus</button>
+                  </div>
                 </div>
               </div>
             </div>
