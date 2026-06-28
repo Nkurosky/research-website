@@ -60,6 +60,18 @@ The script writes private local files into:
 data_exports/league-decision-task/participant_csvs/
 ```
 
+To create cleaned analysis files from those participant CSVs, run:
+
+```powershell
+node scripts\clean-league-participant-csvs.js
+```
+
+The cleaner writes full-only, partial-only, all-nonempty, and QC outputs into:
+
+```text
+data_exports/league-decision-task/cleaned/
+```
+
 ## Exporting CSVs
 
 For the normal workflow, run this from the website repo root:
