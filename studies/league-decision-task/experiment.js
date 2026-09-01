@@ -309,7 +309,7 @@ const DEFAULT_SCENARIO_DESCRIPTION = 'Add scenario context here.';
 const DEFAULT_PRIOR_CONTEXT = 'No additional prior context was provided for this scenario.';
 const RESULT_FIELD_DELIMITER = '\t';
 const RESULT_LINE_DELIMITER = '\r\n';
-const LIVE_TRIAL_DURATION_SEC = 32;
+const LIVE_TRIAL_DURATION_SEC = 45;
 const MIN_RATIONALE_WORDS = 8;
 const CONFIDENCE_DEADZONE_POINTS = 5;
 const STUDY_CONFIG = window.LEAGUE_STUDY_CONFIG || {};
@@ -562,8 +562,45 @@ function flattenRevealedCueSets(revealOrder) {
     .join(' | ');
 }
 
+function timingNumber(value) {
+  if (value === '' || value === null || value === undefined) return NaN;
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : NaN;
+}
+
+function formatTimingValue(value, digits = 3) {
+  const numeric = timingNumber(value);
+  return Number.isFinite(numeric) ? numeric.toFixed(digits) : '';
+}
+
+function revealClickTime(entry) {
+  return entry?.click_time_sec ?? entry?.time;
+}
+
+function revealVisibleTime(entry) {
+  return entry?.visible_time_sec ?? entry?.time;
+}
+
+function flattenRevealClickTimes(revealOrder) {
+  return revealOrder.map((entry) => formatTimingValue(revealClickTime(entry))).join(' | ');
+}
+
 function flattenRevealTimes(revealOrder) {
-  return revealOrder.map((entry) => (Number(entry.time) || 0).toFixed(2)).join(' | ');
+  return revealOrder.map((entry) => formatTimingValue(revealVisibleTime(entry))).join(' | ');
+}
+
+function flattenRevealLatencies(revealOrder) {
+  return revealOrder.map((entry) => formatTimingValue(entry?.render_latency_ms, 1)).join(' | ');
+}
+
+function flattenInterRevealIntervals(revealOrder) {
+  return revealOrder.map((entry, index) => {
+    const current = timingNumber(revealVisibleTime(entry));
+    const previous = index === 0 ? 0 : timingNumber(revealVisibleTime(revealOrder[index - 1]));
+    return Number.isFinite(current) && Number.isFinite(previous)
+      ? formatTimingValue(current - previous)
+      : '';
+  }).join(' | ');
 }
 
 function cueImpactRows(revealOrder, revealConfidence) {
@@ -629,7 +666,7 @@ function exploratoryCuesAfterPrimary(cueImpacts, primaryImpact) {
 
 function getFirstRevealTime(revealOrder) {
   if (!Array.isArray(revealOrder) || revealOrder.length === 0) return '';
-  return (Number(revealOrder[0]?.time) || 0).toFixed(2);
+  return formatTimingValue(revealVisibleTime(revealOrder[0]));
 }
 
 function flattenContextViewPhases(contextViews) {
@@ -726,10 +763,20 @@ function buildSpreadsheetResult(rowsOverride = null) {
     'decision_source',
     'final_confidence',
     'rationale',
+    'trial_started_at_iso',
+    'trial_start_study_timestamp_sec',
     'decision_rt_ms',
     'decision_timestamp_sec',
+    'stimulus_exit_timestamp_sec',
+    'decision_study_timestamp_sec',
+    'report_started_timestamp_sec',
+    'report_finished_timestamp_sec',
+    'report_duration_sec',
+    'total_trial_time_sec',
+    'trial_end_study_timestamp_sec',
     'timed_out',
     'trial_duration_sec',
+    'decision_window_sec',
     'num_blocks_opened',
     'first_reveal_time_sec',
     'final_seen_state',
@@ -750,11 +797,16 @@ function buildSpreadsheetResult(rowsOverride = null) {
     'primary_confidence_delta',
     'primary_confidence_direction',
     'post_primary_exploratory_cues',
+    'reveal_click_timestamps_sec',
     'reveal_timestamps_sec',
+    'cue_render_latencies_ms',
+    'inter_reveal_intervals_sec',
+    'last_reveal_to_decision_sec',
     'context_opened',
     'num_context_views',
     'context_view_phases',
     'context_view_timestamps_sec',
+    'trial_event_timeline_json',
     'survey_rank',
     'survey_rank_bin',
     'survey_current_rank',
@@ -778,6 +830,17 @@ function buildSpreadsheetResult(rowsOverride = null) {
     const cueImpacts = cueImpactRows(revealOrder, revealConfidence);
     const primaryImpact = primaryCueImpact(cueImpacts);
     const defaultReveal = revealOrder[0] ?? {};
+    const decisionTimeSec = timingNumber(row.decision_time_sec ?? row.time);
+    const reportFinishedTimeSec = timingNumber(row.report_finished_time_sec ?? row.time);
+    const lastRevealTimeSec = revealOrder.length > 0
+      ? timingNumber(revealVisibleTime(revealOrder[revealOrder.length - 1]))
+      : NaN;
+    const derivedReportDurationSec = Number.isFinite(decisionTimeSec) && Number.isFinite(reportFinishedTimeSec)
+      ? reportFinishedTimeSec - decisionTimeSec
+      : NaN;
+    const lastRevealToDecisionSec = Number.isFinite(lastRevealTimeSec) && Number.isFinite(decisionTimeSec)
+      ? decisionTimeSec - lastRevealTimeSec
+      : NaN;
 
     return [
       metadata.worker_id,
@@ -800,9 +863,19 @@ function buildSpreadsheetResult(rowsOverride = null) {
       row.decision_source ?? '',
       row.confidence ?? '',
       row.rationale ?? '',
-      row.rt ?? '',
-      (Number(row.time) || 0).toFixed(2),
+      row.trial_started_at_iso ?? '',
+      formatTimingValue(row.trial_start_study_time_sec),
+      row.decision_rt_ms ?? row.rt ?? '',
+      formatTimingValue(decisionTimeSec),
+      formatTimingValue(decisionTimeSec),
+      formatTimingValue(row.decision_study_time_sec),
+      formatTimingValue(row.report_started_time_sec ?? decisionTimeSec),
+      formatTimingValue(reportFinishedTimeSec),
+      formatTimingValue(row.report_duration_sec ?? derivedReportDurationSec),
+      formatTimingValue(row.total_trial_time_sec ?? reportFinishedTimeSec),
+      formatTimingValue(row.trial_end_study_time_sec),
       row.timed_out ?? '0',
+      row.trial_duration_sec ?? '',
       row.trial_duration_sec ?? '',
       revealOrder.length,
       getFirstRevealTime(revealOrder),
@@ -824,11 +897,16 @@ function buildSpreadsheetResult(rowsOverride = null) {
       primaryImpact?.delta ?? '',
       confidenceDirection(primaryImpact?.delta),
       exploratoryCuesAfterPrimary(cueImpacts, primaryImpact),
+      flattenRevealClickTimes(revealOrder),
       flattenRevealTimes(revealOrder),
+      flattenRevealLatencies(revealOrder),
+      flattenInterRevealIntervals(revealOrder),
+      formatTimingValue(lastRevealToDecisionSec),
       contextViews.length > 0 ? '1' : '0',
       row.num_context_views ?? contextViews.length,
       flattenContextViewPhases(contextViews),
       flattenContextViewTimes(contextViews),
+      row.trial_event_timeline ?? '',
       surveyResponse.rank ?? '',
       rankBinFromText(surveyResponse.rank),
       surveyResponse.current_rank ?? '',
@@ -1594,15 +1672,80 @@ function buildCueSearchTimeline(stimulus, options = {}) {
   let finalDecision = '';
   let finalDecisionConfidence = 0;
   let finalDecisionRationale = '';
+  let trialStartedAtIso = '';
+  let trialStartStudyTimeSec = null;
+  let pendingRevealEntry = null;
+  let decisionTimeSec = null;
+  let decisionRtMs = null;
+  let decisionStudyTimeSec = null;
+  let reportStartedTimeSec = null;
+  let reportFinishedTimeSec = null;
+  let reportDurationSec = null;
+  let totalTrialTimeSec = null;
+  let trialEndStudyTimeSec = null;
+  const trialEvents = [];
+
+  function initializeTrialClock() {
+    if (trialStartTime !== null) return;
+
+    const now = performance.now();
+    trialStartTime = now;
+    trialStartedAtIso = new Date().toISOString();
+    trialStartStudyTimeSec = Math.max(0, (now - experimentStart) / 1000);
+    if (trialDurationSec) {
+      trialDeadlineTime = trialStartTime + (trialDurationSec * 1000);
+    }
+
+    trialEvents.push({
+      event_type: 'trial_started',
+      trial_time_sec: 0,
+      study_time_sec: trialStartStudyTimeSec,
+      wall_time_iso: trialStartedAtIso
+    });
+  }
+
+  function recordTrialEvent(eventType, details = {}) {
+    initializeTrialClock();
+    const now = performance.now();
+    const timing = {
+      event_type: eventType,
+      trial_time_sec: Math.max(0, (now - trialStartTime) / 1000),
+      study_time_sec: Math.max(0, (now - experimentStart) / 1000),
+      wall_time_iso: new Date().toISOString(),
+      ...details
+    };
+    trialEvents.push(timing);
+    return timing;
+  }
+
+  function markPendingCueVisible() {
+    if (!pendingRevealEntry) return;
+
+    const revealEvent = recordTrialEvent('cue_revealed', {
+      cue_id: pendingRevealEntry.cue_id,
+      reveal_group: pendingRevealEntry.reveal_group,
+      revealed_cue_ids: pendingRevealEntry.revealed_cue_ids
+    });
+    const clickTimeSec = Number(pendingRevealEntry.click_time_sec);
+    pendingRevealEntry.visible_time_sec = revealEvent.trial_time_sec;
+    pendingRevealEntry.visible_study_time_sec = revealEvent.study_time_sec;
+    pendingRevealEntry.render_latency_ms = Number.isFinite(clickTimeSec)
+      ? Math.max(0, (revealEvent.trial_time_sec - clickTimeSec) * 1000)
+      : null;
+    // `time` remains the backwards-compatible reveal timestamp, now defined as
+    // the moment the newly uncovered cue is actually visible in the DOM.
+    pendingRevealEntry.time = revealEvent.trial_time_sec;
+    pendingRevealEntry = null;
+    updateLatestPartialTrialRow('cue_visible');
+  }
 
   function recordContextView(phase) {
-    if (trialStartTime === null) {
-      trialStartTime = performance.now();
-    }
+    const contextEvent = recordTrialEvent('context_opened', { phase });
 
     contextViews.push({
       phase,
-      time: (performance.now() - trialStartTime) / 1000
+      time: contextEvent.trial_time_sec,
+      study_time_sec: contextEvent.study_time_sec
     });
     updateLatestPartialTrialRow(`context_${phase}`);
   }
@@ -1630,7 +1773,7 @@ function buildCueSearchTimeline(stimulus, options = {}) {
       return;
     }
 
-    const currentConfidence = finalDecisionConfidence || getCurrentConfidence();
+    const currentConfidence = finalDecision ? finalDecisionConfidence : getCurrentConfidence();
 
     latestPartialTrialRow = {
       stimulus_id: stimulus.id,
@@ -1655,6 +1798,17 @@ function buildCueSearchTimeline(stimulus, options = {}) {
       num_cues_revealed: revealedCueIds.length,
       context_views: JSON.stringify(contextViews),
       num_context_views: contextViews.length,
+      trial_event_timeline: JSON.stringify(trialEvents),
+      trial_started_at_iso: trialStartedAtIso,
+      trial_start_study_time_sec: trialStartStudyTimeSec,
+      decision_time_sec: decisionTimeSec ?? '',
+      decision_rt_ms: decisionRtMs ?? '',
+      decision_study_time_sec: decisionStudyTimeSec ?? '',
+      report_started_time_sec: reportStartedTimeSec ?? '',
+      report_finished_time_sec: reportFinishedTimeSec ?? '',
+      report_duration_sec: reportDurationSec ?? '',
+      total_trial_time_sec: getElapsedSec(),
+      trial_end_study_time_sec: trialEndStudyTimeSec ?? '',
       time: getElapsedSec(),
       rt: getElapsedMs(),
       timed_out: timedOut ? '1' : '0',
@@ -1842,13 +1996,12 @@ function buildCueSearchTimeline(stimulus, options = {}) {
         is_tutorial: isTutorial
       },
       on_load: function () {
-        if (trialStartTime === null) {
-          trialStartTime = performance.now();
-          if (trialDurationSec) {
-            trialDeadlineTime = trialStartTime + (trialDurationSec * 1000);
-          }
+        const isFirstTrialRender = trialStartTime === null;
+        initializeTrialClock();
+        if (isFirstTrialRender) {
           updateLatestPartialTrialRow('trial_started');
         }
+        markPendingCueVisible();
 
         const slider = document.getElementById('confidence-slider');
         const overlayButtons = document.querySelectorAll('.reveal-box');
@@ -1926,6 +2079,16 @@ function buildCueSearchTimeline(stimulus, options = {}) {
             return;
           }
 
+          const reportFinishedEvent = recordTrialEvent('report_finished', {
+            decision: finalDecision,
+            rationale_word_count: rationaleWords
+          });
+          reportFinishedTimeSec = reportFinishedEvent.trial_time_sec;
+          totalTrialTimeSec = reportFinishedTimeSec;
+          trialEndStudyTimeSec = reportFinishedEvent.study_time_sec;
+          reportDurationSec = Number.isFinite(decisionTimeSec)
+            ? Math.max(0, reportFinishedTimeSec - decisionTimeSec)
+            : null;
           clearTimer();
           finalDecisionRationale = rationaleValue;
           finalDecisionConfidence = slider ? slider.value : finalDecisionConfidence;
@@ -1957,8 +2120,19 @@ function buildCueSearchTimeline(stimulus, options = {}) {
             num_cues_revealed: revealedCueIds.length,
             context_views: JSON.stringify(contextViews),
             num_context_views: contextViews.length,
-            time: getElapsedSec(),
-            rt: getElapsedMs(),
+            trial_event_timeline: JSON.stringify(trialEvents),
+            trial_started_at_iso: trialStartedAtIso,
+            trial_start_study_time_sec: trialStartStudyTimeSec,
+            decision_time_sec: decisionTimeSec ?? '',
+            decision_rt_ms: decisionRtMs ?? '',
+            decision_study_time_sec: decisionStudyTimeSec ?? '',
+            report_started_time_sec: reportStartedTimeSec ?? decisionTimeSec ?? '',
+            report_finished_time_sec: reportFinishedTimeSec,
+            report_duration_sec: reportDurationSec ?? '',
+            total_trial_time_sec: totalTrialTimeSec,
+            trial_end_study_time_sec: trialEndStudyTimeSec,
+            time: totalTrialTimeSec,
+            rt: totalTrialTimeSec * 1000,
             timed_out: timedOut ? '1' : '0',
             trial_duration_sec: trialDurationSec ?? ''
           });
@@ -1976,6 +2150,9 @@ function buildCueSearchTimeline(stimulus, options = {}) {
             timedOut = true;
             timeoutSliderAdjustmentAvailable = true;
             timeoutSliderLockedValue = slider ? slider.value : null;
+            recordTrialEvent('decision_window_timeout', {
+              confidence: timeoutSliderLockedValue
+            });
             lockStimulus({
               showCover: true,
               isTimeout: true,
@@ -2008,6 +2185,10 @@ function buildCueSearchTimeline(stimulus, options = {}) {
               timeoutSliderAdjustmentAvailable = false;
               slider.disabled = true;
               finalDecisionConfidence = slider.value;
+              recordTrialEvent('confidence_updated', {
+                confidence: slider.value,
+                phase: 'post_timeout'
+              });
               updateLatestPartialTrialRow('timeout_confidence_updated');
               updateStatusMessage(
                 `Final confidence update saved. Choose ${decisionOptions.action_text}, then enter your rationale.`,
@@ -2018,6 +2199,10 @@ function buildCueSearchTimeline(stimulus, options = {}) {
 
             if (!sliderTouched && slider.value !== requiredSliderValue) {
               sliderTouched = true;
+              recordTrialEvent('confidence_updated', {
+                confidence: slider.value,
+                phase: 'cue_search'
+              });
               updateLatestPartialTrialRow('confidence_updated');
               updateStatusMessage(
                 stimulusLocked
@@ -2045,6 +2230,13 @@ function buildCueSearchTimeline(stimulus, options = {}) {
 
             const cueId = this.dataset.cueId;
             const revealedCueIdsForClick = cuesTriggeredByClick(stimulus, cueId);
+            const revealGroup = cueRevealGroup(stimulus.cues.find((cue) => cue.id === cueId));
+            const cueClickEvent = recordTrialEvent('cue_clicked', {
+              cue_id: cueId,
+              reveal_group: revealGroup,
+              revealed_cue_ids: revealedCueIdsForClick,
+              confidence: slider ? slider.value : null
+            });
 
             clearTimer();
             jsPsych.finishTrial({
@@ -2052,10 +2244,12 @@ function buildCueSearchTimeline(stimulus, options = {}) {
               is_tutorial: isTutorial,
               event_type: 'reveal',
               cue_id: cueId,
-              reveal_group: cueRevealGroup(stimulus.cues.find((cue) => cue.id === cueId)),
+              reveal_group: revealGroup,
               revealed_cue_ids: revealedCueIdsForClick,
               confidence: slider ? slider.value : null,
-              time: getElapsedSec()
+              click_time_sec: cueClickEvent.trial_time_sec,
+              click_study_time_sec: cueClickEvent.study_time_sec,
+              time: cueClickEvent.trial_time_sec
             });
           });
         });
@@ -2064,23 +2258,36 @@ function buildCueSearchTimeline(stimulus, options = {}) {
           button.addEventListener('click', function () {
             finalDecision = button.dataset.decision || '';
             finalDecisionConfidence = slider ? slider.value : finalDecisionConfidence;
-            updateLatestPartialTrialRow('decision_selected');
+            const decisionEvent = recordTrialEvent('decision_selected', {
+              decision: finalDecision,
+              confidence: finalDecisionConfidence,
+              timed_out: timedOut
+            });
+            decisionTimeSec = decisionEvent.trial_time_sec;
+            decisionRtMs = decisionTimeSec * 1000;
+            decisionStudyTimeSec = decisionEvent.study_time_sec;
 
             decisionButtons.forEach((choiceButton) => {
               choiceButton.classList.toggle('selected', choiceButton === button);
+              choiceButton.disabled = true;
             });
 
             lockStimulus({
-              showCover: timedOut,
+              showCover: true,
               isTimeout: timedOut,
               message: timedOut
                 ? 'Time is up. Your choice is selected. Finish your explanation to continue.'
-                : ''
+                : 'Choice recorded. Finish your explanation to continue.'
             });
 
             if (selectedDecisionLabel) selectedDecisionLabel.textContent = finalDecision;
             if (rationaleSection) rationaleSection.hidden = false;
             if (rationaleInput) rationaleInput.focus();
+            const reportStartedEvent = recordTrialEvent('report_started', {
+              decision: finalDecision
+            });
+            reportStartedTimeSec = reportStartedEvent.trial_time_sec;
+            updateLatestPartialTrialRow('decision_selected');
 
             updateStatusMessage(
               timedOut
@@ -2110,14 +2317,21 @@ function buildCueSearchTimeline(stimulus, options = {}) {
 
       if (last.event_type === 'reveal') {
         uniquePushAll(revealedCueIds, last.revealed_cue_ids || [last.cue_id]);
-        revealOrder.push({
+        const revealEntry = {
           cue_id: last.cue_id,
           reveal_group: last.reveal_group || null,
           revealed_cue_ids: last.revealed_cue_ids || [last.cue_id],
+          click_time_sec: last.click_time_sec ?? last.time,
+          click_study_time_sec: last.click_study_time_sec ?? null,
+          visible_time_sec: null,
+          visible_study_time_sec: null,
+          render_latency_ms: null,
           time: last.time
-        });
+        };
+        revealOrder.push(revealEntry);
+        pendingRevealEntry = revealEntry;
         revealConfidence.push(last.confidence);
-        updateLatestPartialTrialRow('cue_revealed');
+        updateLatestPartialTrialRow('cue_clicked');
         return true;
       }
 
@@ -2185,8 +2399,8 @@ const experimentInstructionsTrial = {
     '<div class="screen-wrap"><h2>Experiment Instructions</h2>' +
     '<p>Each trial shows a League of Legends screenshot with several hidden <strong>blocks</strong>.</p>' +
     '<p>You may reveal blocks one at a time to gather information. After each reveal, update the confidence slider before opening another block.</p>' +
-    '<p>The two large endpoint buttons double as your final decision buttons: choose one of the two displayed options whenever you are ready, then type a short rationale.</p>' +
-    '<p>Live trials are timed. Once the countdown reaches zero, the screenshot is fully blocked and you must make your call using only the information you already gathered.</p></div>'
+    '<p>The two large endpoint buttons double as your final decision buttons. Choosing one records your decision time and covers the screenshot; then type a short rationale.</p>' +
+    `<p>Live trials have a ${LIVE_TRIAL_DURATION_SEC}-second decision window. Once the countdown reaches zero, the screenshot is fully blocked and you must make your call using only the information you already gathered.</p></div>`
 };
 
 const tutorialIntroTrial = {
@@ -2206,7 +2420,8 @@ const liveStudyStartTrial = {
     '<div class="screen-wrap"><h2>Live Trials</h2>' +
     '<p>The practice round is complete. The scored trials now use the timed fast-decision format.</p>' +
     `<p>Each live screenshot gives you up to <strong>${LIVE_TRIAL_DURATION_SEC} seconds</strong> to reveal only the blocks you think you need.</p>` +
-    '<p>When the timer expires, the screenshot is fully covered and you must choose one of the displayed options and provide a brief rationale.</p></div>'
+    '<p>Choosing an option ends your search and covers the screenshot. You will then provide a brief rationale; the study records that report-completion time separately.</p>' +
+    '<p>If the timer expires first, the screenshot is fully covered and you must choose using only the information you already gathered.</p></div>'
 };
 
 const completionTrial = {
