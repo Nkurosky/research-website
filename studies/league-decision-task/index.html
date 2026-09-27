@@ -72,6 +72,23 @@
       }
 
       /* ===== MAIN CONTAINER ===== */
+      .eligibility-screen fieldset {
+        margin: 24px 0;
+        padding: 16px;
+        border: 1px solid #607080;
+      }
+
+      .eligibility-screen legend {
+        font-weight: 600;
+        max-width: 100%;
+      }
+
+      .eligibility-screen label {
+        display: block;
+        padding: 8px 0;
+        cursor: pointer;
+      }
+
       .screen-wrap {
         margin: 0 auto;
         max-width: 900px;
@@ -1073,6 +1090,7 @@
         downloadResultsOnRemoteSaveFailure: false
       };
     </script>
-    <script src="experiment.js?v=20260901-detailed-trial-timing"></script>
+    <noscript>JavaScript is required to complete the eligibility check and participate in this study.</noscript>
+    <script src="eligibility.js?v=20260927-eligibility" data-experiment-src="experiment.js?v=20260927-riot-id"></script>
   </body>
 </html>

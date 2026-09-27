@@ -25,6 +25,7 @@ const jsPsych = initJsPsych({
     }
   }
 });
+jsPsych.data.addProperties(window.LEAGUE_STUDY_ELIGIBILITY || {});
 
 /*
  * Stimuli definition.
@@ -817,7 +818,12 @@ function buildSpreadsheetResult(rowsOverride = null) {
     'survey_playstyle_aggression_bin',
     'survey_primary_role',
     'survey_otp',
-    'survey_competitive_experience'
+    'survey_competitive_experience',
+    'eligibility_age_18_or_older',
+    'eligibility_country_of_residence',
+    'eligibility_policy_version',
+    'eligibility_screened_at',
+    'survey_riot_id'
   ];
 
   const spreadsheetRows = decisionRows.map((row) => {
@@ -917,7 +923,12 @@ function buildSpreadsheetResult(rowsOverride = null) {
       playstyleAggressionBin(surveyResponse.playstyle_aggression),
       surveyResponse.role ?? '',
       surveyResponse.otp ?? '',
-      surveyResponse.competitive ?? ''
+      surveyResponse.competitive ?? '',
+      row.eligibility_age_18_or_older ?? '',
+      row.eligibility_country_of_residence ?? '',
+      row.eligibility_policy_version ?? '',
+      row.eligibility_screened_at ?? '',
+      surveyResponse.riot_id ?? ''
     ].map(spreadsheetEscape).join(RESULT_FIELD_DELIMITER);
   });
 
@@ -1194,6 +1205,7 @@ function submitJatosAutosave(payload) {
 }
 
 function persistAutosave(reason = 'autosave', latestRow = null) {
+  if (!window.LeagueEligibility?.canParticipate()) return;
   autosaveSequence += 1;
   const snapshot = buildAutosaveSnapshot(reason, latestRow);
   const localPayload = JSON.stringify(snapshot);
@@ -1213,6 +1225,7 @@ function persistAutosave(reason = 'autosave', latestRow = null) {
 }
 
 function finishStudyWithResults() {
+  if (!window.LeagueEligibility?.canParticipate()) return;
   const resultTable = buildSpreadsheetResult(rowsWithLatestPartialTrial(getBestAvailableRows()));
   const finalSave = persistAutosave('final_submit');
 
@@ -1776,6 +1789,7 @@ function buildCueSearchTimeline(stimulus, options = {}) {
     const currentConfidence = finalDecision ? finalDecisionConfidence : getCurrentConfidence();
 
     latestPartialTrialRow = {
+      ...window.LEAGUE_STUDY_ELIGIBILITY,
       stimulus_id: stimulus.id,
       is_tutorial: isTutorial,
       incomplete_refresh: '1',
@@ -2380,6 +2394,7 @@ const surveyTrial = {
   type: jsPsychSurveyText,
   preamble: '<div class="screen-wrap"><h2>Pre-experiment Survey</h2><p>Please answer the following questions before beginning the task. For rank, include the tier name if possible, such as Silver, Gold, Emerald, Diamond, Master, Grandmaster, or Challenger.</p></div>',
   questions: [
+    { prompt: 'What is your Riot ID (username and tag)?', name: 'riot_id', placeholder: 'e.g., Lokidosi#IUB', required: true },
     { prompt: 'What is the highest League of Legends rank you have achieved?', name: 'rank', placeholder: 'e.g., Gold IV', required: true },
     { prompt: 'What is your current rank in League of Legends?', name: 'current_rank', placeholder: 'e.g., Platinum II', required: true },
     { prompt: 'OP.GG Link (optional)', name: 'opgg', placeholder: 'https://www.op.gg/summoner/userName=yourname' },
@@ -2389,7 +2404,35 @@ const surveyTrial = {
     { prompt: 'Are you an OTP (one-trick pony) for a specific champion? If so, who?', name: 'otp', placeholder: 'e.g., Yes, I main Yasuo' },
     { prompt: 'Do you have experience playing amateur (or higher) competitive League of Legends?', name: 'competitive', placeholder: 'e.g., Yes, I played on a team for Titan eSports' }
   ],
-  button_label: 'Continue'
+  button_label: 'Continue',
+  on_load: function () {
+    const form = document.getElementById('jspsych-survey-text-form');
+    const riotId = form.querySelector('input[data-name="riot_id"]');
+    riotId.setAttribute('aria-label', 'Riot ID (Username#Tag)');
+    riotId.spellcheck = false;
+
+    function validateRiotId() {
+      const value = riotId.value.trim();
+      const parts = value.split('#');
+      const valid = parts.length === 2 && parts[0].trim().length > 0 &&
+        parts[1].length > 0 && !/\s/.test(parts[1]);
+      riotId.setCustomValidity(valid ? '' : 'Enter your username and tag, separated by # (for example, Lokidosi#IUB).');
+      return valid;
+    }
+
+    riotId.addEventListener('input', validateRiotId);
+    validateRiotId();
+    // Validate before jsPsych captures responses and advances the timeline.
+    form.addEventListener('submit', (event) => {
+      if (!validateRiotId()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        riotId.reportValidity();
+        return;
+      }
+      riotId.value = riotId.value.trim();
+    }, true);
+  }
 };
 
 const experimentInstructionsTrial = {
@@ -2466,7 +2509,9 @@ function runParticipantExperiment() {
   }
 }
 
-if (EDIT_MODE) {
+if (!window.LeagueEligibility?.canParticipate()) {
+  app.innerHTML = '<div class="screen-wrap"><h1>Eligibility check required</h1><p>Please reload the study page.</p></div>';
+} else if (EDIT_MODE) {
   renderCalibrationApp();
 } else {
   runParticipantExperiment();
