@@ -8,6 +8,19 @@
       background: #fafafa;
     }
 
+    .lab-task-link {
+      margin: 0 0 24px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #ddd;
+      font-size: 1.2rem;
+      font-weight: bold;
+    }
+
+    .lab-task-link a {
+      color: #0645ad;
+      overflow-wrap: anywhere;
+    }
+
     header {
       border-bottom: 1px solid #ddd;
       margin-bottom: 32px;
