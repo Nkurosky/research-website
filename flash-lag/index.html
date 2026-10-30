@@ -32,11 +32,11 @@
         <div>
           <p class="eyebrow">OPTICAL MOTION / 01</p>
           <h1 id="pageTitle">Flash<span class="title-slash">/</span>Lag</h1>
-          <p class="lede">A moving line and a stationary flash, aligned in the stimulus itself. Follow the orbit or fixate on the center, then decide what you see.</p>
+          <p class="lede">One or several stationary pivots, each with a spinning line and a stationary flash. Compare shared timing, phase, and direction while you decide what you see.</p>
         </div>
         <div class="intro-note" aria-label="Experiment note">
           <span class="note-rule" aria-hidden="true"></span>
-          <p>Reality check: the default flash is captured at the moving line's current angle. Any offset is yours to add.</p>
+          <p>Reality check: every flash captures the active moving angles from one displayed frame. Any offset is yours to add.</p>
         </div>
       </section>
 
@@ -102,6 +102,72 @@
             </select>
           </div>
 
+          <details class="control-group circle-controls" open>
+            <summary><span class="summary-title">Circles &amp; layout</span><span class="summary-meta" id="layoutSummary">Single circle</span></summary>
+            <div class="control-content">
+              <div class="control-row">
+                <div class="control-label"><label for="layoutSelect">Layout</label></div>
+                <select class="select" id="layoutSelect">
+                  <option value="single">Single circle</option>
+                  <option value="two-horizontal">Two horizontal / across</option>
+                  <option value="two-vertical">Two vertical</option>
+                  <option value="two-diagonal-tlbr">Two diagonal · TL → BR</option>
+                  <option value="two-diagonal-trbl">Two diagonal · TR → BL</option>
+                  <option value="four-corners">Four corners</option>
+                </select>
+              </div>
+              <div class="control-row">
+                <div class="control-label"><label for="circleSpacing">Circle spacing</label><span class="value-editor"><input class="number-input" id="circleSpacingNumber" data-number-for="circleSpacing" type="number" min="20" max="70" step="0.1" value="52" aria-label="Circle spacing as a percentage of the stage radius"><span class="unit" aria-hidden="true">%</span></span></div>
+                <input id="circleSpacing" type="range" min="20" max="70" step="0.1" value="52">
+              </div>
+              <div class="control-row">
+                <div class="control-label"><label for="circleScale">Circle scale</label><span class="value-editor"><input class="number-input" id="circleScaleNumber" data-number-for="circleScale" type="number" min="20" max="100" step="0.1" value="100" aria-label="Circle scale as a percentage of the stage radius"><span class="unit" aria-hidden="true">%</span></span></div>
+                <input id="circleScale" type="range" min="20" max="100" step="0.1" value="100">
+              </div>
+              <label class="check-row"><input id="showPairGuides" type="checkbox"><span class="checkmark" aria-hidden="true"></span><span><strong>Show pair guides</strong><small>Connect paired pivots</small></span></label>
+              <div class="control-row">
+                <div class="control-label"><label for="flashMode">Flash mode</label></div>
+                <select class="select" id="flashMode">
+                  <option value="timed">Timed flashes</option>
+                  <option value="alignment">At alignment angle</option>
+                </select>
+              </div>
+              <div class="control-row alignment-angle-control">
+                <div class="control-label"><label for="alignmentAngle">Alignment angle</label><span class="value-editor"><input class="number-input" id="alignmentAngleNumber" data-number-for="alignmentAngle" type="number" min="-180" max="180" step="0.1" value="0" aria-label="Alignment base angle in degrees"><span class="unit" aria-hidden="true">°</span></span></div>
+                <input id="alignmentAngle" type="range" min="-180" max="180" step="0.1" value="0">
+              </div>
+              <div class="circle-actions">
+                <button class="button button-secondary" id="faceAcrossButton" type="button">Face across</button>
+                <button class="button button-secondary" id="faceDiagonalButton" type="button">Face diagonally</button>
+                <button class="button button-secondary" id="alignFreezeButton" type="button">Align &amp; freeze</button>
+              </div>
+              <p class="control-note">Spacing and scale are stage-radius percentages; each local radial construction auto-fits inside the stage. For four corners, “across” pairs each row; “diagonally” points each corner toward its diagonal partner. Alignment flashes fire on the first displayed frame that crosses the target, so the captured angle is refresh-quantized rather than corrected.</p>
+              <p class="control-note">Circle direction buttons are absolute CW / CCW; the global direction control sets every active circle at once.</p>
+              <div class="circle-rows" id="circleRows" aria-label="Per-circle phase and direction controls">
+                <div class="circle-row" data-circle-index="0">
+                  <div class="circle-row-title"><span class="circle-swatch">A</span><span>Circle A</span></div>
+                  <label class="phase-field" for="circlePhase0"><span>Phase</span><span class="value-editor"><input class="number-input circle-phase-input" id="circlePhase0" data-phase-index="0" type="number" min="-360" max="360" step="0.1" value="0" aria-label="Circle A phase in degrees"><span class="unit" aria-hidden="true">°</span></span></label>
+                  <div class="circle-direction" role="group" aria-label="Circle A absolute rotation direction"><button type="button" data-circle-direction="0" data-direction="cw" aria-pressed="true">CW</button><button type="button" data-circle-direction="0" data-direction="ccw" aria-pressed="false">CCW</button></div>
+                </div>
+                <div class="circle-row" data-circle-index="1">
+                  <div class="circle-row-title"><span class="circle-swatch">B</span><span>Circle B</span></div>
+                  <label class="phase-field" for="circlePhase1"><span>Phase</span><span class="value-editor"><input class="number-input circle-phase-input" id="circlePhase1" data-phase-index="1" type="number" min="-360" max="360" step="0.1" value="180" aria-label="Circle B phase in degrees"><span class="unit" aria-hidden="true">°</span></span></label>
+                  <div class="circle-direction" role="group" aria-label="Circle B absolute rotation direction"><button type="button" data-circle-direction="1" data-direction="cw" aria-pressed="true">CW</button><button type="button" data-circle-direction="1" data-direction="ccw" aria-pressed="false">CCW</button></div>
+                </div>
+                <div class="circle-row" data-circle-index="2">
+                  <div class="circle-row-title"><span class="circle-swatch">C</span><span>Circle C</span></div>
+                  <label class="phase-field" for="circlePhase2"><span>Phase</span><span class="value-editor"><input class="number-input circle-phase-input" id="circlePhase2" data-phase-index="2" type="number" min="-360" max="360" step="0.1" value="90" aria-label="Circle C phase in degrees"><span class="unit" aria-hidden="true">°</span></span></label>
+                  <div class="circle-direction" role="group" aria-label="Circle C absolute rotation direction"><button type="button" data-circle-direction="2" data-direction="cw" aria-pressed="true">CW</button><button type="button" data-circle-direction="2" data-direction="ccw" aria-pressed="false">CCW</button></div>
+                </div>
+                <div class="circle-row" data-circle-index="3">
+                  <div class="circle-row-title"><span class="circle-swatch">D</span><span>Circle D</span></div>
+                  <label class="phase-field" for="circlePhase3"><span>Phase</span><span class="value-editor"><input class="number-input circle-phase-input" id="circlePhase3" data-phase-index="3" type="number" min="-360" max="360" step="0.1" value="270" aria-label="Circle D phase in degrees"><span class="unit" aria-hidden="true">°</span></span></label>
+                  <div class="circle-direction" role="group" aria-label="Circle D absolute rotation direction"><button type="button" data-circle-direction="3" data-direction="cw" aria-pressed="true">CW</button><button type="button" data-circle-direction="3" data-direction="ccw" aria-pressed="false">CCW</button></div>
+                </div>
+              </div>
+            </div>
+          </details>
+
           <details class="control-group" open>
             <summary><span class="summary-title">Motion &amp; timing</span><span class="summary-meta" id="motionSummary">15 rpm · 100 fpm</span></summary>
             <div class="control-content">
@@ -118,13 +184,13 @@
                 <input id="durationMs" type="range" min="1" max="1000" step="1" value="20">
               </div>
               <div class="segmented-field">
-                <span class="field-label">Direction</span>
-                <div class="segmented" role="group" aria-label="Rotation direction">
+                <span class="field-label">Set all directions</span>
+                <div class="segmented" role="group" aria-label="Set all directions">
                   <button type="button" class="segment-button is-selected" data-direction="cw" aria-pressed="true">Clockwise</button>
                   <button type="button" class="segment-button" data-direction="ccw" aria-pressed="false">Counter-clockwise</button>
                 </div>
               </div>
-              <p class="control-note">If the duration is longer than the cadence interval, an automatic flash waits for the current one to end. A manual single flash still expires on its target timer.</p>
+              <p class="control-note">Frequency applies only to timed mode. Alignment mode flashes once per base-angle crossing. If the duration is longer than the timed cadence interval, an automatic flash waits for the current one to end; a manual single flash still expires on its target timer.</p>
             </div>
           </details>
 
