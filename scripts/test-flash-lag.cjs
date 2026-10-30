@@ -74,9 +74,10 @@ function makeEnvironment() {
     input.tagName = "INPUT";
     input.dataset.numberFor = id.replace(/Number$/, "");
   }
-  const selectIds = ["presetSelect", "layoutSelect", "flashMode"];
+  const selectIds = ["presetSelect", "layoutSelect", "flashMode", "flashPlacement"];
   for (const id of selectIds) { const select = add(new FakeElement(id)); select.tagName = "SELECT"; }
   for (const id of ["stageFrame", "statusPill", "statusText", "phaseReadout", "rotationReadout", "cadenceReadout", "durationReadout", "motionSummary", "geometrySummary", "guidesSummary", "alignmentSummary", "layoutSummary", "pauseButtonLabel", "pauseButtonIcon", "freezeButtonLabel", "stageHint", "shareButtonLabel", "shareStatus", "fullscreenButton", "fullscreenExitButton", "faceAcrossButton", "faceDiagonalButton", "alignFreezeButton", "pauseButton", "singleFlashButton", "freezeButton", "resetButton", "shareButton"]) add(new FakeElement(id));
+  add(new FakeElement("anchorFlashToCenter", "checkbox"));
   elements.get("fullscreenButton").querySelector = () => ({ textContent: "" });
   const segmented = new FakeElement("segmented"); segmented.classList.add("segmented");
   const globalDirectionButtons = ["cw", "ccw"].map((direction) => { const b = new FakeElement(); b.tagName = "BUTTON"; b.dataset.direction = direction; return b; });
@@ -157,15 +158,43 @@ demo.setSettings({ layout: "four-corners", circleSpacing: 70, circleScale: 100, 
 const layout = demo.getLayout();
 assert.equal(layout.circles.length, 4, "four-corner layout has four contained circles");
 for (const circle of layout.circles) {
-  const extent = circle.geometry.flashStart + circle.geometry.flashLength + circle.geometry.maxStroke / 2;
+  const extent = Math.max(circle.geometry.movingEnd, circle.geometry.flashEnd) + circle.geometry.maxStroke / 2;
   assert.ok(circle.x - extent >= -1e-8 && circle.x + extent <= layout.side + 1e-8, "horizontal geometry remains inside stage");
   assert.ok(circle.y - extent >= -1e-8 && circle.y + extent <= layout.side + 1e-8, "vertical geometry remains inside stage");
 }
 
-demo.setSettings({ layout: "invalid", flashMode: "invalid", phases: [999, -999, "bad", 15], directions: ["ccw", "bad"], circleSpacing: 999, circleScale: -5, alignmentAngle: 999 });
+demo.setSettings({
+  layout: "single",
+  flashPlacement: "inside",
+  anchorFlashToCenter: true,
+  connected: false,
+  innerRadius: 12,
+  movingLength: 48,
+  flashLength: 30,
+  gap: 10
+});
+const inward = demo.getGeometry();
+assert.equal(inward.flashStart, 0, "anchored inward flash reaches the pivot center");
+assert.ok(inward.flashEnd < inward.movingStart, "inward flash ends before the outer moving segment begins");
+assert.ok(inward.movingStart > 0, "inward preset geometry leaves the moving segment detached from the pivot");
+assert.ok(inward.movingStart + inward.movingLength <= inward.availableRadius + 1e-8, "inward moving segment remains inside the fitted radial bound");
+
+demo.setSettings({ innerRadius: 50, connected: true, anchorFlashToCenter: true });
+const anchoredConnected = demo.getGeometry();
+assert.equal(anchoredConnected.flashStart, 0, "anchored inward flash stays at the pivot despite a stale inner radius");
+assert.ok(nearlyEqual(anchoredConnected.flashEnd, anchoredConnected.movingStart), "connected anchored inward geometry touches exactly at the flash edge");
+
+demo.setSettings({ anchorFlashToCenter: false, connected: false });
+const floatingInward = demo.getGeometry();
+assert.ok(floatingInward.flashStart > 0, "disabling the anchor allows the inward flash to respect inner radius");
+assert.ok(floatingInward.flashEnd < floatingInward.movingStart, "unanchored inward flash still preserves the gap before outer motion");
+
+demo.setSettings({ layout: "invalid", flashMode: "invalid", flashPlacement: "invalid", anchorFlashToCenter: "bad", phases: [999, -999, "bad", 15], directions: ["ccw", "bad"], circleSpacing: 999, circleScale: -5, alignmentAngle: 999 });
 const safe = demo.getSettings();
 assert.equal(safe.layout, "single");
 assert.equal(safe.flashMode, "timed");
+assert.equal(safe.flashPlacement, "outside");
+assert.equal(safe.anchorFlashToCenter, true);
 assert.deepEqual(Array.from(safe.phases), [360, -360, 90, 15]);
 assert.deepEqual(Array.from(safe.directions), ["ccw", "cw", "cw", "cw"]);
 assert.equal(safe.circleSpacing, 70);

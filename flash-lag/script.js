@@ -18,6 +18,7 @@
   });
   const LAYOUTS = new Set(Object.keys(LAYOUT_LABELS));
   const FLASH_MODES = new Set(["timed", "alignment"]);
+  const FLASH_PLACEMENTS = new Set(["outside", "inside"]);
   const PAIR_MODES = new Set(["across", "diagonal"]);
 
   const DEFAULTS = Object.freeze({
@@ -28,6 +29,8 @@
     movingLength: 58,
     flashLength: 24,
     gap: 0,
+    flashPlacement: "outside",
+    anchorFlashToCenter: true,
     movingThickness: 4,
     flashThickness: 4,
     innerRadius: 12,
@@ -76,6 +79,20 @@
       connected: false,
       gap: 0,
       angularOffset: 12
+    },
+    inward: {
+      ...DEFAULTS,
+      speedRpm: 5,
+      frequencyFpm: 60,
+      durationMs: 24,
+      flashPlacement: "inside",
+      anchorFlashToCenter: true,
+      connected: false,
+      innerRadius: 0,
+      movingLength: 48,
+      flashLength: 30,
+      gap: 10,
+      showOrbit: false
     }
   });
 
@@ -145,6 +162,8 @@
     circleScale: $("circleScale"),
     showPairGuides: $("showPairGuides"),
     flashMode: $("flashMode"),
+    flashPlacement: $("flashPlacement"),
+    anchorFlashToCenter: $("anchorFlashToCenter"),
     alignmentAngle: $("alignmentAngle"),
     connected: $("connected"),
     showCenter: $("showCenter"),
@@ -229,6 +248,8 @@
     next.showCenter = safeBoolean(input.showCenter, DEFAULTS.showCenter);
     next.showOrbit = safeBoolean(input.showOrbit, DEFAULTS.showOrbit);
     next.showPairGuides = safeBoolean(input.showPairGuides, DEFAULTS.showPairGuides);
+    next.flashPlacement = FLASH_PLACEMENTS.has(input.flashPlacement) ? input.flashPlacement : DEFAULTS.flashPlacement;
+    next.anchorFlashToCenter = safeBoolean(input.anchorFlashToCenter, DEFAULTS.anchorFlashToCenter);
     next.layout = LAYOUTS.has(input.layout) ? input.layout : DEFAULTS.layout;
     next.flashMode = FLASH_MODES.has(input.flashMode) ? input.flashMode : DEFAULTS.flashMode;
     next.pairMode = PAIR_MODES.has(input.pairMode) ? input.pairMode : DEFAULTS.pairMode;
@@ -298,6 +319,13 @@
     const gapNumber = $("gapNumber");
     gapNumber.disabled = settings.connected;
     gapNumber.setAttribute("aria-disabled", String(settings.connected));
+    controls.anchorFlashToCenter.disabled = settings.flashPlacement !== "inside";
+    controls.anchorFlashToCenter.setAttribute("aria-disabled", String(settings.flashPlacement !== "inside"));
+    const anchorInside = settings.flashPlacement === "inside" && settings.anchorFlashToCenter;
+    controls.innerRadius.disabled = anchorInside;
+    controls.innerRadius.setAttribute("aria-disabled", String(anchorInside));
+    readouts.innerRadius.disabled = anchorInside;
+    readouts.innerRadius.setAttribute("aria-disabled", String(anchorInside));
     const timedMode = settings.flashMode === "timed";
     controls.frequencyFpm.disabled = !timedMode;
     controls.frequencyFpm.setAttribute("aria-disabled", String(!timedMode));
@@ -319,7 +347,9 @@
     $("cadenceReadout").textContent = timedMode ? `${formatNumber(settings.frequencyFpm)} fpm` : "Once / revolution";
     $("durationReadout").textContent = `${formatNumber(settings.durationMs)} ms`;
     $("motionSummary").textContent = timedMode ? `${formatNumber(settings.speedRpm, 1)} rpm · ${formatNumber(settings.frequencyFpm)} fpm` : `${formatNumber(settings.speedRpm, 1)} rpm · once / revolution`;
-    $("geometrySummary").textContent = `${formatNumber(settings.innerRadius)}% inner · ${settings.connected ? "0" : formatNumber(settings.gap)}% gap`;
+    const placementLabel = settings.flashPlacement === "inside" ? "inside flash" : "outside flash";
+    const innerLabel = anchorInside ? "pivot anchored" : `${formatNumber(settings.innerRadius)}% inner`;
+    $("geometrySummary").textContent = `${placementLabel} · ${innerLabel} · ${settings.connected ? "0" : formatNumber(settings.gap)}% gap`;
     $("guidesSummary").textContent = `Center ${settings.showCenter ? "on" : "off"} · Orbit ${settings.showOrbit ? "on" : "off"}`;
     $("alignmentSummary").textContent = `${settings.angularOffset > 0 ? "+" : ""}${formatNumber(settings.angularOffset)}° offset`;
     $("layoutSummary").textContent = `${LAYOUT_LABELS[settings.layout]} · ${activeCircleCount()} circle${activeCircleCount() === 1 ? "" : "s"}`;
@@ -407,7 +437,13 @@
     const rawMovingLength = radius * (settings.movingLength / 100);
     const rawGap = settings.connected ? 0 : radius * (settings.gap / 100);
     const rawFlashLength = radius * (settings.flashLength / 100);
-    const requestedExtent = rawInner + rawMovingLength + rawGap + rawFlashLength;
+    const rawFlashStart = settings.flashPlacement === "inside" && settings.anchorFlashToCenter ? 0 : rawInner;
+    const rawFlashEnd = rawFlashStart + rawFlashLength;
+    const rawMovingStart = settings.flashPlacement === "inside" ? rawFlashEnd + rawGap : rawInner;
+    const rawMovingEnd = rawMovingStart + rawMovingLength;
+    const requestedExtent = settings.flashPlacement === "inside"
+      ? Math.max(rawFlashEnd, rawMovingEnd)
+      : rawMovingEnd + rawGap + rawFlashLength;
     // Radial lengths share one scale factor. The margin and half the largest
     // stroke are reserved before scaling, so a 40 px stroke cannot clip the
     // stage edge and no segment is silently truncated.
@@ -418,15 +454,21 @@
     const availableRadius = Math.max(0, radius - margin - halfMaxThickness);
     const uniformScale = requestedExtent > 0 ? Math.min(1, availableRadius / requestedExtent) : 0;
     const inner = rawInner * uniformScale;
+    const movingStart = rawMovingStart * uniformScale;
     const movingLength = rawMovingLength * uniformScale;
+    const movingEnd = rawMovingEnd * uniformScale;
     const effectiveGap = rawGap * uniformScale;
+    const flashStart = rawFlashStart * uniformScale;
     const flashLength = rawFlashLength * uniformScale;
-    const movingEnd = inner + movingLength;
+    const flashEnd = rawFlashEnd * uniformScale;
     return {
       inner,
+      movingStart,
       movingLength,
-      flashStart: movingEnd + effectiveGap,
+      movingEnd,
+      flashStart: settings.flashPlacement === "inside" ? flashStart : movingEnd + effectiveGap,
       flashLength,
+      flashEnd: settings.flashPlacement === "inside" ? flashEnd : movingEnd + effectiveGap + flashLength,
       requestedExtent,
       availableRadius,
       uniformScale,
@@ -531,7 +573,7 @@
         context.restore();
       }
 
-      drawSegment(angles[index], geometry.inner, geometry.movingLength, settings.movingColor, Math.min(settings.movingThickness, geometry.maxStroke), circle);
+      drawSegment(angles[index], geometry.movingStart, geometry.movingLength, settings.movingColor, Math.min(settings.movingThickness, geometry.maxStroke), circle);
       if (runtime.flash.visible) {
         const flashAngle = runtime.flash.angles[index] ?? (angles[index] + degreesToRadians(settings.angularOffset));
         drawSegment(flashAngle, geometry.flashStart, geometry.flashLength, settings.flashColor, Math.min(settings.flashThickness, geometry.maxStroke), circle);
@@ -970,6 +1012,7 @@
     });
     controls.layoutSelect.addEventListener("change", () => setLayout(controls.layoutSelect.value));
     controls.flashMode.addEventListener("change", () => setSettingsFromControl("flashMode", controls.flashMode.value));
+    controls.flashPlacement.addEventListener("change", () => setSettingsFromControl("flashPlacement", controls.flashPlacement.value));
     $("faceAcrossButton").addEventListener("click", () => setFacePattern("across"));
     $("faceDiagonalButton").addEventListener("click", () => setFacePattern("diagonal"));
     $("alignFreezeButton").addEventListener("click", alignAndFreeze);

@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#f4f7fa">
   <meta name="description" content="A configurable flash-lag illusion demonstration with a continuously rotating radial line and a briefly flashed stationary line.">
   <title>Flash-Lag Study | Nathan Kurosky</title>
-  <link rel="stylesheet" href="styles.css?v=multi-circle-1">
+  <link rel="stylesheet" href="styles.css?v=inward-flash-1">
 </head>
 <body>
   <div class="app-shell" id="appShell">
@@ -99,6 +99,7 @@
               <option value="classic">Classic / connected slow</option>
               <option value="clear">Clear separation</option>
               <option value="offset">Explicit 12° offset</option>
+              <option value="inward">Inward flash / outer motion</option>
             </select>
           </div>
 
@@ -210,10 +211,20 @@
                 <input id="flashLength" type="range" min="4" max="55" step="1" value="24">
               </div>
               <div class="control-row">
+                <div class="control-label"><label for="flashPlacement">Flash placement</label></div>
+                <select class="select" id="flashPlacement">
+                  <option value="outside">Outside / after moving line</option>
+                  <option value="inside">Inside / toward circle</option>
+                </select>
+              </div>
+              <div class="control-row">
                 <div class="control-label"><label for="gap">Gap between lines</label><span class="value-editor"><input class="number-input" id="gapNumber" data-number-for="gap" type="number" min="0" max="24" step="1" value="0" aria-label="Gap between lines as a stage radius percentage"><span class="unit" aria-hidden="true">%</span></span></div>
                 <input id="gap" type="range" min="0" max="24" step="1" value="0">
               </div>
               <label class="check-row"><input id="connected" type="checkbox" checked><span class="checkmark" aria-hidden="true"></span><span><strong>Connect lines</strong><small>Force the gap to zero</small></span></label>
+              <label class="check-row"><input id="anchorFlashToCenter" type="checkbox" checked><span class="checkmark" aria-hidden="true"></span><span><strong>Anchor inward flash to center</strong><small>Inward placement only · start at the pivot</small></span></label>
+              <p class="control-note">Outside placement puts the flash after the moving line. Inside placement reverses the radial order: the flash sits toward the pivot and the moving line sits farther out. With the anchor on, the inward flash starts at the circle center; lengths and gap still control its outer edge and the moving line's separation.</p>
+              <p class="control-note">When the inward anchor is on, inner radius is locked at the pivot; flash length plus gap sets where outer motion begins.</p>
               <p class="control-note">Lengths use the stage radius as their unit. If the requested radial construction is too large, every radial distance is uniformly scaled inward so the thickest line cap stays contained; on very small stages, stroke width is capped to the available space.</p>
             </div>
           </details>
@@ -292,6 +303,6 @@
     </footer>
   </div>
 
-  <script src="script.js?v=multi-circle-1" defer></script>
+  <script src="script.js?v=inward-flash-1" defer></script>
 </body>
 </html>
