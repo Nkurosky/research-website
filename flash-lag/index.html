@@ -1,0 +1,231 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4f7fa">
+  <meta name="description" content="A configurable flash-lag illusion demonstration with a continuously rotating radial line and a briefly flashed stationary line.">
+  <title>Flash-Lag Study | Nathan Kurosky</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <header class="topbar">
+      <a class="brand" href="/index.html" aria-label="Return to the home page">
+        <span class="brand-mark" aria-hidden="true">N</span>
+        <span class="brand-copy">
+          <span class="eyebrow">Visual timing study</span>
+          <span class="brand-title">Nathan Kurosky</span>
+        </span>
+      </a>
+      <div class="topbar-actions">
+        <span class="build-label">Interactive perception lab</span>
+        <button class="button button-quiet" id="fullscreenButton" type="button" aria-label="Enter fullscreen stage">
+          <span class="button-icon" aria-hidden="true">↗</span>
+          <span class="fullscreen-label">Fullscreen</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="page-grid">
+      <section class="intro" aria-labelledby="pageTitle">
+        <div>
+          <p class="eyebrow">OPTICAL MOTION / 01</p>
+          <h1 id="pageTitle">Flash<span class="title-slash">/</span>Lag</h1>
+          <p class="lede">A moving line and a stationary flash, aligned in the stimulus itself. Follow the orbit or fixate on the center, then decide what you see.</p>
+        </div>
+        <div class="intro-note" aria-label="Experiment note">
+          <span class="note-rule" aria-hidden="true"></span>
+          <p>Reality check: the default flash is captured at the moving line's current angle. Any offset is yours to add.</p>
+        </div>
+      </section>
+
+      <div class="workbench">
+        <section class="stage-panel panel" aria-labelledby="stageTitle">
+          <div class="panel-heading stage-heading">
+            <div>
+              <p class="eyebrow">Live stimulus</p>
+              <h2 id="stageTitle">Watch the seam</h2>
+            </div>
+            <div class="status-stack">
+              <span class="status-pill" id="statusPill"><span class="status-dot" aria-hidden="true"></span><span id="statusText" aria-live="polite">Running</span></span>
+              <span class="phase-readout" id="phaseReadout">0.0°</span>
+            </div>
+          </div>
+
+          <div class="stage-actions">
+            <div class="action-copy">
+              <p class="eyebrow">Try this</p>
+              <p>Follow the moving line for a few flashes, then fixate on the center. Slow the rotation to make the shared angle easier to inspect.</p>
+            </div>
+            <div class="action-buttons">
+              <button class="button button-primary" id="pauseButton" type="button"><span class="button-icon" id="pauseButtonIcon" aria-hidden="true">Ⅱ</span><span id="pauseButtonLabel">Pause</span></button>
+              <button class="button button-secondary" id="singleFlashButton" type="button"><span class="button-icon" aria-hidden="true">✦</span>Single flash</button>
+              <button class="button button-secondary" id="freezeButton" type="button"><span class="button-icon" aria-hidden="true">⊙</span><span id="freezeButtonLabel">Freeze reference</span></button>
+            </div>
+          </div>
+
+          <div class="stage-frame" id="stageFrame">
+            <canvas id="stimulusCanvas" aria-label="Flash-lag illusion stage"></canvas>
+            <div class="stage-corner stage-corner-tl" aria-hidden="true">A</div>
+            <div class="stage-corner stage-corner-br" aria-hidden="true">01</div>
+            <div class="stage-hint" id="stageHint">Space to pause</div>
+            <button class="fullscreen-exit" id="fullscreenExitButton" type="button" aria-label="Exit fullscreen">Exit fullscreen</button>
+          </div>
+
+          <div class="stage-readouts" aria-label="Stage readouts">
+            <div class="readout-item"><span>Rotation</span><strong id="rotationReadout">15 rpm</strong></div>
+            <div class="readout-item"><span>Flash cadence</span><strong id="cadenceReadout">100 fpm</strong></div>
+            <div class="readout-item"><span>Target duration</span><strong id="durationReadout">20 ms</strong></div>
+            <div class="readout-item"><span>Frame note</span><strong>~16.7 ms @ 60 Hz</strong></div>
+          </div>
+
+        </section>
+
+        <aside class="controls-panel panel" aria-labelledby="controlsTitle">
+          <div class="panel-heading controls-heading">
+            <div>
+              <p class="eyebrow">Parameters</p>
+              <h2 id="controlsTitle">Build the stimulus</h2>
+            </div>
+            <button class="button button-icon-only" id="resetButton" type="button" aria-label="Reset all controls to the default settings" title="Reset defaults">↺</button>
+          </div>
+
+          <div class="preset-row">
+            <label class="field-label" for="presetSelect">Preset</label>
+            <select class="select" id="presetSelect">
+              <option value="default">Classic timing</option>
+              <option value="custom">Custom</option>
+              <option value="classic">Classic / connected slow</option>
+              <option value="clear">Clear separation</option>
+              <option value="offset">Explicit 12° offset</option>
+            </select>
+          </div>
+
+          <details class="control-group" open>
+            <summary><span class="summary-title">Motion &amp; timing</span><span class="summary-meta" id="motionSummary">15 rpm · 100 fpm</span></summary>
+            <div class="control-content">
+              <div class="control-row">
+                <div class="control-label"><label for="speedRpm">Speed</label><span class="value-editor"><input class="number-input" id="speedRpmNumber" data-number-for="speedRpm" type="number" min="0" max="60" step="0.1" value="15" aria-label="Speed in revolutions per minute"><span class="unit" aria-hidden="true">rpm</span></span></div>
+                <input id="speedRpm" type="range" min="0" max="60" step="0.1" value="15">
+              </div>
+              <div class="control-row">
+                <div class="control-label"><label for="frequencyFpm">Flash frequency</label><span class="value-editor"><input class="number-input" id="frequencyFpmNumber" data-number-for="frequencyFpm" type="number" min="0" max="600" step="1" value="100" aria-label="Flash frequency in flashes per minute"><span class="unit" aria-hidden="true">fpm</span></span></div>
+                <input id="frequencyFpm" type="range" min="0" max="600" step="1" value="100">
+              </div>
+              <div class="control-row">
+                <div class="control-label"><label for="durationMs">Flash duration</label><span class="value-editor"><input class="number-input" id="durationMsNumber" data-number-for="durationMs" type="number" min="1" max="1000" step="1" value="20" aria-label="Flash duration in milliseconds"><span class="unit" aria-hidden="true">ms</span></span></div>
+                <input id="durationMs" type="range" min="1" max="1000" step="1" value="20">
+              </div>
+              <div class="segmented-field">
+                <span class="field-label">Direction</span>
+                <div class="segmented" role="group" aria-label="Rotation direction">
+                  <button type="button" class="segment-button is-selected" data-direction="cw" aria-pressed="true">Clockwise</button>
+                  <button type="button" class="segment-button" data-direction="ccw" aria-pressed="false">Counter-clockwise</button>
+                </div>
+              </div>
+              <p class="control-note">If the duration is longer than the cadence interval, an automatic flash waits for the current one to end. A manual single flash still expires on its target timer.</p>
+            </div>
+          </details>
+
+          <details class="control-group" open>
+            <summary><span class="summary-title">Line geometry</span><span class="summary-meta" id="geometrySummary">12% inner · 0 gap</span></summary>
+            <div class="control-content">
+              <div class="control-row">
+                <div class="control-label"><label for="innerRadius">Inner radius / orbit</label><span class="value-editor"><input class="number-input" id="innerRadiusNumber" data-number-for="innerRadius" type="number" min="0" max="50" step="1" value="12" aria-label="Inner radius as a stage radius percentage"><span class="unit" aria-hidden="true">%</span></span></div>
+                <input id="innerRadius" type="range" min="0" max="50" step="1" value="12">
+              </div>
+              <div class="control-row">
+                <div class="control-label"><label for="movingLength">Moving line length</label><span class="value-editor"><input class="number-input" id="movingLengthNumber" data-number-for="movingLength" type="number" min="8" max="82" step="1" value="58" aria-label="Moving line length as a stage radius percentage"><span class="unit" aria-hidden="true">%</span></span></div>
+                <input id="movingLength" type="range" min="8" max="82" step="1" value="58">
+              </div>
+              <div class="control-row">
+                <div class="control-label"><label for="flashLength">Flash line length</label><span class="value-editor"><input class="number-input" id="flashLengthNumber" data-number-for="flashLength" type="number" min="4" max="55" step="1" value="24" aria-label="Flash line length as a stage radius percentage"><span class="unit" aria-hidden="true">%</span></span></div>
+                <input id="flashLength" type="range" min="4" max="55" step="1" value="24">
+              </div>
+              <div class="control-row">
+                <div class="control-label"><label for="gap">Gap between lines</label><span class="value-editor"><input class="number-input" id="gapNumber" data-number-for="gap" type="number" min="0" max="24" step="1" value="0" aria-label="Gap between lines as a stage radius percentage"><span class="unit" aria-hidden="true">%</span></span></div>
+                <input id="gap" type="range" min="0" max="24" step="1" value="0">
+              </div>
+              <label class="check-row"><input id="connected" type="checkbox" checked><span class="checkmark" aria-hidden="true"></span><span><strong>Connect lines</strong><small>Force the gap to zero</small></span></label>
+              <p class="control-note">Lengths use the stage radius as their unit. If the requested radial construction is too large, every radial distance is uniformly scaled inward so the thickest line cap stays contained; on very small stages, stroke width is capped to the available space.</p>
+            </div>
+          </details>
+
+          <details class="control-group">
+            <summary><span class="summary-title">Line styling</span><span class="summary-meta">Color · weight</span></summary>
+            <div class="control-content two-column">
+              <label class="color-field" for="movingColor"><span>Moving color</span><span class="color-input-wrap"><input id="movingColor" type="color" value="#2f619c"><output id="movingColorValue">#2F619C</output></span></label>
+              <label class="color-field" for="flashColor"><span>Flash color</span><span class="color-input-wrap"><input id="flashColor" type="color" value="#d1773d"><output id="flashColorValue">#D1773D</output></span></label>
+              <div class="control-row">
+                <div class="control-label"><label for="movingThickness">Moving thickness</label><span class="value-editor"><input class="number-input" id="movingThicknessNumber" data-number-for="movingThickness" type="number" min="1" max="40" step="0.5" value="4" aria-label="Moving line thickness in pixels"><span class="unit" aria-hidden="true">px</span></span></div>
+                <input id="movingThickness" type="range" min="1" max="40" step="0.5" value="4">
+              </div>
+              <div class="control-row">
+                <div class="control-label"><label for="flashThickness">Flash thickness</label><span class="value-editor"><input class="number-input" id="flashThicknessNumber" data-number-for="flashThickness" type="number" min="1" max="40" step="0.5" value="4" aria-label="Flash line thickness in pixels"><span class="unit" aria-hidden="true">px</span></span></div>
+                <input id="flashThickness" type="range" min="1" max="40" step="0.5" value="4">
+              </div>
+            </div>
+          </details>
+
+          <details class="control-group">
+            <summary><span class="summary-title">Center &amp; guides</span><span class="summary-meta" id="guidesSummary">Center on · Orbit on</span></summary>
+            <div class="control-content">
+              <div class="control-row">
+                <div class="control-label"><label for="centerSize">Center circle size</label><span class="value-editor"><input class="number-input" id="centerSizeNumber" data-number-for="centerSize" type="number" min="1" max="20" step="1" value="7" aria-label="Center circle size as a stage radius percentage"><span class="unit" aria-hidden="true">%</span></span></div>
+                <input id="centerSize" type="range" min="1" max="20" step="1" value="7">
+              </div>
+              <div class="two-checks">
+                <label class="check-row"><input id="showCenter" type="checkbox" checked><span class="checkmark" aria-hidden="true"></span><span><strong>Show center</strong><small>Fixation reference</small></span></label>
+                <label class="check-row"><input id="showOrbit" type="checkbox" checked><span class="checkmark" aria-hidden="true"></span><span><strong>Show orbit guide</strong><small>Inner radius ring</small></span></label>
+              </div>
+              <div class="color-field standalone-color"><label for="backgroundColor">Stage background</label><span class="color-input-wrap"><input id="backgroundColor" type="color" value="#f4f7fa"><output id="backgroundColorValue">#F4F7FA</output></span></div>
+              <div class="color-field standalone-color"><label for="centerColor">Center &amp; guide color</label><span class="color-input-wrap"><input id="centerColor" type="color" value="#172638"><output id="centerColorValue">#172638</output></span></div>
+            </div>
+          </details>
+
+          <details class="control-group">
+            <summary><span class="summary-title">Alignment test</span><span class="summary-meta" id="alignmentSummary">0° offset</span></summary>
+            <div class="control-content">
+              <div class="control-row">
+                <div class="control-label"><label for="angularOffset">Angular offset</label><span class="value-editor"><input class="number-input" id="angularOffsetNumber" data-number-for="angularOffset" type="number" min="-180" max="180" step="1" value="0" aria-label="Angular offset in degrees"><span class="unit" aria-hidden="true">°</span></span></div>
+                <input id="angularOffset" type="range" min="-180" max="180" step="1" value="0">
+              </div>
+              <p class="control-note">Default is exact alignment. Use this control only when you want to introduce a deliberate geometric offset for comparison.</p>
+              <button class="button button-secondary full-width" id="shareButton" type="button"><span class="button-icon" aria-hidden="true">↗</span><span id="shareButtonLabel">Copy share link</span></button>
+              <p class="share-status" id="shareStatus" aria-live="polite"></p>
+            </div>
+          </details>
+
+          <div class="keyboard-note"><span class="keyboard-key">Space</span> pause <span class="keyboard-key">F</span> flash <span class="keyboard-key">R</span> reset</div>
+        </aside>
+      </div>
+
+      <section class="notes-grid" aria-label="Experiment notes">
+        <article class="note-card">
+          <p class="eyebrow">How to use it</p>
+          <h2>Look for the seam.</h2>
+          <p>At the default settings, the moving and flashed segments share one captured angle. Perception can still make the meeting point feel kinked or lagged. Slow the motion, or press <span class="inline-key">Freeze reference</span>, to inspect the geometry.</p>
+        </article>
+        <article class="note-card note-card-muted">
+          <p class="eyebrow">Display constraint</p>
+          <h2>Nominal timing, not a stopwatch.</h2>
+          <p>Browsers present frames on a display refresh cycle. A 20 ms target usually spans one or more display intervals; the observed visibility depends on refresh rate, workload, and the browser's scheduler.</p>
+        </article>
+        <article class="note-card attribution-card">
+          <p class="eyebrow">Further reading</p>
+          <h2>Inspired by Michael Bach.</h2>
+          <p>Inspired by Michael Bach's <a href="https://michaelbach.de/ot/mot-flashLag/" target="_blank" rel="noopener noreferrer">Flash-Lag Effect</a> demonstration.</p>
+        </article>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>Flash / Lag · a small study in temporal perception</span>
+      <span>Canvas timing is nominal and device-dependent.</span>
+    </footer>
+  </div>
+
+  <script src="script.js" defer></script>
+</body>
+</html>
